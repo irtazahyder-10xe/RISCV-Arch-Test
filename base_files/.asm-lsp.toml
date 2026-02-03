@@ -1,0 +1,15 @@
+[default_config]
+version = "0.10.1"
+assembler = "gas"
+instruction_set = "riscv"
+
+[default_config.opts]
+compiler = "riscv64-unknown-elf-gcc"
+compile_flags_txt = [
+    "-nostdlib",
+    "-march=rv32g",
+    "-mabi=ilp32",
+    '"-T link.ld"',
+]
+diagnostics = false
+default_diagnostics = false

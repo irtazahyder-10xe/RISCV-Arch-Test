@@ -11,7 +11,7 @@ DISASM := test.disass
 run: $(OUT)
 	@spike $(SPIKEFLAGS) $(OUT) 1>spike.out 2>spike.log
 
-build: test.S
+build: $(wildcard *.S)
 	$(GCC) $(CFLAGS) $^ -o $(OUT)
 
 disasm:

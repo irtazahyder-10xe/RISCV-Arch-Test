@@ -1,0 +1,32 @@
+[
+  {
+    "arguments": [
+      "/home/lpt-10xe-10/Desktop/10xAssignments/RISCV64/riscv64-unknown-elf-toolchain/bin/riscv64-unknown-elf-gcc",
+      "-c",
+      "-march=rv32g",
+      "-mabi=ilp32",
+      "-Tlink.ld",
+      "-o",
+      "test.out",
+      "macro.S"
+    ],
+    "directory": "/home/lpt-10xe-10/Desktop/10xAssignments/RISCV_arch/base_files",
+    "file": "/home/lpt-10xe-10/Desktop/10xAssignments/RISCV_arch/base_files/macro.S",
+    "output": "/home/lpt-10xe-10/Desktop/10xAssignments/RISCV_arch/base_files/test.out"
+  },
+  {
+    "arguments": [
+      "/home/lpt-10xe-10/Desktop/10xAssignments/RISCV64/riscv64-unknown-elf-toolchain/bin/riscv64-unknown-elf-gcc",
+      "-c",
+      "-march=rv32g",
+      "-mabi=ilp32",
+      "-Tlink.ld",
+      "-o",
+      "test.out",
+      "test.S"
+    ],
+    "directory": "/home/lpt-10xe-10/Desktop/10xAssignments/RISCV_arch/base_files",
+    "file": "/home/lpt-10xe-10/Desktop/10xAssignments/RISCV_arch/base_files/test.S",
+    "output": "/home/lpt-10xe-10/Desktop/10xAssignments/RISCV_arch/base_files/test.out"
+  }
+]

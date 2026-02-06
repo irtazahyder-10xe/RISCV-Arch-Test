@@ -1,0 +1,44 @@
+[
+  {
+    "arguments": [
+      "/home/lpt-10xe-10/Desktop/10xAssignments/RISCV64/riscv64-unknown-elf-toolchain/bin/riscv64-unknown-elf-gcc",
+      "-c",
+      "-march=rv32g",
+      "-mabi=ilp32",
+      "-o",
+      "test.elf",
+      "asm/init.S"
+    ],
+    "directory": "/home/lpt-10xe-10/Desktop/10xAssignments/RISCV_arch/Task3",
+    "file": "/home/lpt-10xe-10/Desktop/10xAssignments/RISCV_arch/Task3/asm/init.S",
+    "output": "/home/lpt-10xe-10/Desktop/10xAssignments/RISCV_arch/Task3/test.elf"
+  },
+  {
+    "arguments": [
+      "/home/lpt-10xe-10/Desktop/10xAssignments/RISCV64/riscv64-unknown-elf-toolchain/bin/riscv64-unknown-elf-gcc",
+      "-c",
+      "-march=rv32g",
+      "-mabi=ilp32",
+      "-o",
+      "test.elf",
+      "asm/macro.S"
+    ],
+    "directory": "/home/lpt-10xe-10/Desktop/10xAssignments/RISCV_arch/Task3",
+    "file": "/home/lpt-10xe-10/Desktop/10xAssignments/RISCV_arch/Task3/asm/macro.S",
+    "output": "/home/lpt-10xe-10/Desktop/10xAssignments/RISCV_arch/Task3/test.elf"
+  },
+  {
+    "arguments": [
+      "/home/lpt-10xe-10/Desktop/10xAssignments/RISCV64/riscv64-unknown-elf-toolchain/bin/riscv64-unknown-elf-gcc",
+      "-c",
+      "-march=rv32g",
+      "-mabi=ilp32",
+      "-o",
+      "test.elf",
+      "asm/test.S"
+    ],
+    "directory": "/home/lpt-10xe-10/Desktop/10xAssignments/RISCV_arch/Task3",
+    "file": "/home/lpt-10xe-10/Desktop/10xAssignments/RISCV_arch/Task3/asm/test.S",
+    "output": "/home/lpt-10xe-10/Desktop/10xAssignments/RISCV_arch/Task3/test.elf"
+  }
+]

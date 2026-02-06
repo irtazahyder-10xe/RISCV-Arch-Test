@@ -1,4 +1,4 @@
-.include "macro.S"
+.include "asm/macro.S"
 
   .section .text
   .p2align 2

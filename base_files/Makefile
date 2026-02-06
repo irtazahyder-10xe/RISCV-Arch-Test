@@ -11,8 +11,7 @@ DISASM := test.disass
 run: $(OUT)
 	@spike $(SPIKEFLAGS) $(OUT) 1>spike.out 2>spike.log
 
-build: $(wildcard *.S)
-	$(GCC) $(CFLAGS) $^ -o $(OUT)
+build: $(OUT)
 
 disasm:
 	$(OBJDUMP) -SDt $(OUT) > $(DISASM)
@@ -20,4 +19,5 @@ disasm:
 clean:
 	@-rm $(OUT) $(DISASM) spike.out spike.log *.o signature.txt
 
-$(OUT): build
+$(OUT): $(wildcard asm/*.S)
+	$(GCC) $(CFLAGS) $^ -o $(OUT)

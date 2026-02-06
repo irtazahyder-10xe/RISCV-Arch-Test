@@ -1,4 +1,4 @@
-.include "macro.S"
+.include "asm/macro.S"
 
 RVTEST_CODE_BEGIN
 _start:
@@ -11,8 +11,8 @@ _start:
   .type trap_init, @function
 trap_init:
   /* Initialzing the processor in Mmode */
-  li t0, MSTATUS_MPP0
   li t1, MSTATUS_MPP1
+  li t0, MSTATUS_MPP0
   or t0, t0, t1
   csrs mstatus, t0
 

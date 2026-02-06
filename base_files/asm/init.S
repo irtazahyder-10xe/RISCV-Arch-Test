@@ -23,7 +23,9 @@ trap_init:
   not t1, t1
   and t0, t0, t1
   csrw mtvec, t0
-  ret
+
+  csrw mepc, ra
+  mret
 
   .p2align 2
   .type trap_vector, @function

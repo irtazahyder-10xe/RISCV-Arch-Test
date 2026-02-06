@@ -2,6 +2,8 @@
 .equ MSTATUS_MPP1, 0x1000
 .equ MSTATUS_MPP0, 0x800
 
+.altmacro
+
 .macro RVTEST_DATA_BEGIN
   .pushsection .tohost,"aw",@progbits
     .p2align 6
@@ -15,10 +17,11 @@
     .size fromhost, .-fromhost
   .popsection
 
+  .equ XLEN, 32
   .p2align 4
   .global begin_signature
     begin_signature:
-      .fill 2, 4, 0xdeadbeef
+      .fill 4*(XLEN/32), 4, 0x00000000
     end_signature:
   .size begin_signature, end_signature-begin_signature
 .endm
@@ -29,18 +32,26 @@
   .global _start
 .endm
 
-.macro PUSH_ALL from=1, to=31
-  addi sp, sp, -4
-  sw x\from, 0(sp)
+.macro PUSH from=1, to=31
+  sw x\from, 4*\from(sp)
   .if \from - \to
-    PUSH_ALL "(\from + 1)", \to
+    PUSH %(\from+1), \to
   .endif
 .endm
 
-.macro POP_ALL from=1, to=31
-  lw x\from, 0(sp)
-  addi sp, sp, 4
+.macro PUSH_ALL
+  addi sp, sp, -32*4
+  PUSH 1, 31
+.endm
+
+.macro POP from=1, to=31
+  lw x\from, 4*\from(sp)
   .if \from - \to
-    POP_ALL "(\from + 1)", \to
+    POP %(\from+1), \to
   .endif
+.endm
+
+.macro POP_ALL
+  POP 1, 31
+  addi sp, sp, 32*4
 .endm

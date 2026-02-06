@@ -17,12 +17,12 @@
     .size fromhost, .-fromhost
   .popsection
 
-  .equ XLEN, 32
-  .equ WORDS, 4
+  .equ XLEN, 8
+  .equ WORDS, 2
   .p2align 4
   .global begin_signature
     begin_signature:
-      .fill WORDS*(XLEN/32), 4, 0x00000000
+      .fill WORDS, XLEN/8, 0xAB
     end_signature:
   .size begin_signature, end_signature-begin_signature
 .endm
@@ -34,25 +34,27 @@
 .endm
 
 .macro PUSH from=1, to=31
-  sw x\from, 4*\from(sp)
-  .if \from - \to
+  sw x\from, 4*\from(t0)
+  .if \to - \from
     PUSH %(\from+1), \to
   .endif
 .endm
 
-.macro PUSH_ALL
-  addi sp, sp, -32*4
+.macro PUSH_ALL scratch=mscratch
+  csrrw t0, scratch, t0
   PUSH 1, 31
+  csrrw t0, scratch, t0
 .endm
 
 .macro POP from=1, to=31
-  lw x\from, 4*\from(sp)
-  .if \from - \to
+  lw x\from, 4*\from(t0)
+  .if \to - \from
     POP %(\from+1), \to
   .endif
 .endm
 
-.macro POP_ALL
+.macro POP_ALL scratch=mscratch
+  csrrw t0, scratch, t0
   POP 1, 31
-  addi sp, sp, 32*4
+  csrrw t0, scratch, t0
 .endm

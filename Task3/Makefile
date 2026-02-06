@@ -2,7 +2,7 @@ PREFIX := riscv64-unknown-elf
 GCC := $(PREFIX)-gcc
 CFLAGS := -march=rv32g -mabi=ilp32 -nostdlib -T link.ld
 OBJDUMP := $(PREFIX)-objdump
-SPIKEFLAGS := --isa=rv32i -l --log-commits +signature=signature.txt --signature-granularity=4
+SPIKEFLAGS := --isa=rv32i -l --log-commits +signature=signature.txt --signature-granularity=1
 
 OUT := test.elf
 DISASM := test.disass

@@ -19,5 +19,8 @@ disasm:
 clean:
 	@-rm $(OUT) $(DISASM) spike.out spike.log *.o signature.txt
 
+lsp_init:
+	@bear -- $(GCC) $(CFLAGS) $(wildcard asm/*.S) -o $(OUT)
+
 $(OUT): $(wildcard asm/*.S)
 	$(GCC) $(CFLAGS) $^ -o $(OUT)

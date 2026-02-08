@@ -58,6 +58,6 @@ write_tohost:
   .global signature_word
   .type signature_word, @object
 signature_word: .word 0
-  .size signatuer_word, 4
+  .size signature_word, 4
 
 RVTEST_DATA_BEGIN

@@ -16,6 +16,12 @@ SECTIONS
   .bss : {
 	  *(.bss)
   }
+  .scratch : ALIGN(0x1000) {
+    _mscratch = .;
+    . += 256;
+    _sscratch = .;
+    . += 256;
+  }
   .stack : ALIGN(0x1000) {
 	  _estack = .;
 	  . += 128K;

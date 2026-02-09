@@ -16,33 +16,47 @@ main:
   /* Initially as PMP is configured, access to main function in S and U mode are
    * disabled. As these sections are not explicitly defined, the below instruction
    * raises the illegal instruction access exception */
+  li a0, 0
   add s0, zero, zero
+  ADD_TO_SIGNATURE a0
 
 
   /* Testing X/W/R on defined regions from desired regions */
   /* ================== TOR ================== */
   /* Instruction access */
+  li a0, 0
   la t0, _TOR_START
   jalr t0
+  ADD_TO_SIGNATURE a0
 
   /* Write Access */
+  li a0, 0
   la t0, _TOR_START
   sw t0, 4(t0)
+  ADD_TO_SIGNATURE a0
 
   /* Read Access */
+  li a0, 0
   lw t0, 4(t0)
+  ADD_TO_SIGNATURE a0
 
   /* ================= NAPOT ================= */
   /* Instruction access */
+  li a0, 0
   la t0, _NAPOT_START
   jalr t0
+  ADD_TO_SIGNATURE a0
 
   /* Write Access */
+  li a0, 0
   la t0, _NAPOT_START
   sw t0, 4(t0)
+  ADD_TO_SIGNATURE a0
 
   /* Read Access */
+  li a0, 0
   lw t0, 4(t0)
+  ADD_TO_SIGNATURE a0
 
   /* Exiting test */
   j write_tohost
@@ -88,11 +102,11 @@ priv_change:
    * Keeps track of byte to write in signature.txt
    */
   .section .data
-  .type signature_count, @object
-  .global signature_count
+  .type signature_offset, @object
+  .global signature_offset
   .p2align 2
-signature_count:
+signature_offset:
   .word 0x00
-  .size signature_count, 4
+  .size signature_offset, 4
 
 RVTEST_DATA_BEGIN

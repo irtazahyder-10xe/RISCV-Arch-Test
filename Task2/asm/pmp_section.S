@@ -1,12 +1,13 @@
-  .section .tor
+  .section .tor, "aw", @progbits
+  // .p2align 12
   .global test_tor_instr
   .type test_tor_instr, @function
-test_instrc:
-  /* Writing 707 in register a0 and then returning */
-  li a0, 0x707
+test_tor_instrc:
+  /* returns to the caller */
   ret
 
-  .section .napot
+  .section .napot, "aw", @progbits
+  // .p2align 12
   .global test_napot_data
   .type test_napot_data, @object
-test_data: .fill 4, 4, 0xdeadbeef
+test_napot_data: .fill 4, 4, 0xdeadbeef

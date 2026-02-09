@@ -5,8 +5,10 @@
 
 .equ PMP_XMODE_MAIN_CONFIG, 0x0F
 
-.equ PMP_NAPOT_CONFIG, 0x19
 .equ PMP_TOR_CONFIG, 0x0C
+
+.equ PMP_NAPOT_CONFIG, 0x19
+.equ PMPADDR_NAPOT_4K_MASK, 0x1FF
 
 .equ PMP_LOCK_MASK, 0x80808080
 
@@ -28,11 +30,11 @@
   .popsection
 
   .equ XLEN, 8
-  .equ WORDS, 2
+  .equ SPACE, 8
   .p2align 4
   .global begin_signature
     begin_signature:
-      .fill WORDS, XLEN/8, 0xAB
+      .fill SPACE, XLEN/8, 0x00
     end_signature:
   .size begin_signature, end_signature-begin_signature
 .endm
@@ -67,4 +69,15 @@
   csrrw t0, scratch, t0
   POP 1, 31
   csrrw t0, scratch, t0
+.endm
+
+.macro ADD_TO_SIGNATURE reg
+  la t0, begin_signature
+  lw t1, signature_offset
+  add t0, t0, t1
+  sb \reg, 0(t0)
+  addi t1, t1, 1
+
+  la t0, signature_offset
+  sw t1, 0(t0)
 .endm

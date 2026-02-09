@@ -31,10 +31,12 @@ SECTIONS
   .pmp ALIGN(4K) : {
     _TOR_START = .;
     *(.tor)
-    _TOR_END = ALIGN(4K);
+    . = ALIGN(4K);
+    _TOR_END = .;
 
     _NAPOT_START = ALIGN(4K);
     *(.napot)
     . = ALIGN(4K);
+    _NAPOT_END = .;
   }
 }

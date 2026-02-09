@@ -42,7 +42,7 @@ pmp_configure:
   /* Initializing pmpcfg0 -> pmp3cfg | 0x00 | pmp1cfg | pmp0cfg */
   /* Configuring the asm in test.S to be able to run in U or S mode */
   /* Comment this line to review the exception generated in 5 */
-  // li t0, PMP_XMODE_MAIN_CONFIG
+  li t0, PMP_XMODE_MAIN_CONFIG
 
   li t1, PMP_NAPOT_CONFIG
   sll t1, t1, 8
@@ -64,15 +64,20 @@ pmp_configure:
 
   /* Initializing pmpaddrX csrs */
   la t0, _end
+  srli t0, t0, 2
   csrw pmpaddr0, t0
 
   la t1, _NAPOT_START
+  srli t1, t1, 2
+  ori t1, t1, PMPADDR_NAPOT_4K_MASK
   csrw pmpaddr1, t1
 
   la t2, _TOR_START
+  srli t2, t2, 2
   csrw pmpaddr2, t2
 
   la t3, _TOR_END
+  srli t3, t3, 2
   csrw pmpaddr3, t3
   ret
   .size pmp_configure, .-pmp_configure
@@ -176,21 +181,32 @@ mcause_jumptable:
  * exception.
  */
 exec_access_routine:
-  // Overwriting the location where a0 is saved
   csrr a0, mcause
-  sw a0, 40(sp)
+  csrrw t0, mscratch, t0
+  // Overwriting the location where a0 is saved
+  sw a0, 40(t0)
+  // As we are testing the execution functionality by jumping to the address,
+  // mepc should hold value of ra - 4
+  lw ra, 4(t0)
+  addi ra, ra, -4
+  csrw mepc, ra
+  csrrw t0, mscratch, t0
   j .trap_finish
 
 load_access_routine:
   // Overwriting the location where a0 is saved
   csrr a0, mcause
-  sw a0, 40(sp)
+  csrrw t0, mscratch, t0
+  sw a0, 40(t0)
+  csrrw t0, mscratch, t0
   j .trap_finish
 
 store_access_routine:
   // Overwriting the location where a0 is saved
   csrr a0, mcause
-  sw a0, 40(sp)
+  csrrw t0, mscratch, t0
+  sw a0, 40(t0)
+  csrrw t0, mscratch, t0
   j .trap_finish
 
 /**
@@ -206,7 +222,9 @@ umode_ecall_routine:
   csrs mstatus, t0
   // Overwriting the location where a0 is saved
   li a0, 0x0
-  sw a0, 40(sp)
+  csrrw t0, mscratch, t0
+  sw a0, 40(t0)
+  csrrw t0, mscratch, t0
   j .trap_finish
 
 smode_ecall_routine:
@@ -215,10 +233,14 @@ smode_ecall_routine:
   csrs mstatus, t0
   // Overwriting the location where a0 is saved
   li a0, 0x1
-  sw a0, 40(sp)
+  csrrw t0, mscratch, t0
+  sw a0, 40(t0)
+  csrrw t0, mscratch, t0
   j .trap_finish
 
 mmode_ecall_routine:
   li a0, 0x3
-  sw a0, 40(sp)
+  csrrw t0, mscratch, t0
+  sw a0, 40(t0)
+  csrrw t0, mscratch, t0
   j .trap_finish

@@ -5,8 +5,78 @@ RVTEST_CODE_BEGIN
 _start:
   /* Setting the stack pointer */
   la sp, _sstack
+  call pmp_configure
   call trap_init
   j main
+
+  /**
+   * PMP configurations
+   *
+   * Initializes the pmpicfg and corresponding pmpaddri csrs
+   * NOTE: This function is to be called before trap_init. CSRs will update
+   * after trap_init is called.
+   */
+  .p2align 2
+  .type pmp_configure, @function
+pmp_configure:
+  /**
+   *  pmpcfg0:
+   *  [pmp3cfg 0 pmp1cfg pmp0cfg]
+   *    - pmp0cfg: (0)00(0_1)(111)
+   *      - L: 0, A: 01 (TOR), X/W/R: 111 (All permissions)
+   *      - pmpaddr0: _end
+   *      - For allowing data and code in test.S to run in umode and smode
+   *        TOR on pmp0cfg automatically takes all region between pmpaddr0
+   *        to start of the program.
+   *
+   *    - pmp1cfg: (0)00(1_1)(001)
+   *      - L: 0, A: 11 (NAPOT), X/W/R: 001 (READ ONLY)
+   *      - pmpaddr1: _NAPOT_START
+   *
+   *    - pmp3cfg: (0)00(0_1)(100)
+   *      - L: 0, A: 01 (TOR), X/W/R: 100 (EXECUTE ONLY)
+   *      - pmpaddr2: _TOR_START
+   *      - pmpaddr3: _TOR_END
+   */
+
+  /* Initializing pmpcfg0 -> pmp3cfg | 0x00 | pmp1cfg | pmp0cfg */
+  /* Configuring the asm in test.S to be able to run in U or S mode */
+  /* Comment this line to review the exception generated in 5 */
+  // li t0, PMP_XMODE_MAIN_CONFIG
+
+  li t1, PMP_NAPOT_CONFIG
+  sll t1, t1, 8
+  or t0, t0, t1
+
+  li t3, PMP_TOR_CONFIG
+  sll t3, t3, 24
+  or t0, t0, t3
+
+  /* For applying PMP on M-mode accesses */
+  /*
+  li t2, MSTATUS_MPRV
+  csrs mstatus, t2
+  li t1, PMP_LOCK_MASK
+  ori t0, t0, t1
+  */
+
+  csrw pmpcfg0, t0
+
+  /* Initializing pmpaddrX csrs */
+  la t0, _end
+  csrw pmpaddr0, t0
+
+  la t1, _NAPOT_START
+  csrw pmpaddr1, t1
+
+  la t2, _TOR_START
+  csrw pmpaddr2, t2
+
+  la t3, _TOR_END
+  csrw pmpaddr3, t3
+  ret
+  .size pmp_configure, .-pmp_configure
+
 
   /**
    * Trap initializer
@@ -36,6 +106,7 @@ trap_init:
 
   csrw mepc, ra
   mret
+  .size trap_init, .-trap_init
 
   .p2align 2
   .type trap_vector, @function
@@ -60,7 +131,7 @@ mcause_jumptable:
   .p2align 2
   j .trap_finish
   .p2align 2
-  j .trap_finish
+  j exec_access_routine
   .p2align 2
   j .trap_finish
   .p2align 2
@@ -68,19 +139,19 @@ mcause_jumptable:
   .p2align 2
   j .trap_finish
   .p2align 2
-  j .trap_finish
+  j load_access_routine
   .p2align 2
   j .trap_finish
   .p2align 2
+  j store_access_routine
+  .p2align 2
+  j umode_ecall_routine
+  .p2align 2
+  j smode_ecall_routine
+  .p2align 2
   j .trap_finish
   .p2align 2
-  j .umode_ecall_routine
-  .p2align 2
-  j .smode_ecall_routine
-  .p2align 2
-  j .trap_finish
-  .p2align 2
-  j .mmode_ecall_routine
+  j mmode_ecall_routine
   .p2align 2
   j .trap_finish
   .p2align 2
@@ -99,13 +170,37 @@ mcause_jumptable:
   j .trap_finish
 
 /**
+ * TASK 2: Update trap handler and add routines for load/store/execute exceptions
+ *
+ * These routines update the value of register a0 to the value of mcause due to
+ * exception.
+ */
+exec_access_routine:
+  // Overwriting the location where a0 is saved
+  csrr a0, mcause
+  sw a0, 40(sp)
+  j .trap_finish
+
+load_access_routine:
+  // Overwriting the location where a0 is saved
+  csrr a0, mcause
+  sw a0, 40(sp)
+  j .trap_finish
+
+store_access_routine:
+  // Overwriting the location where a0 is saved
+  csrr a0, mcause
+  sw a0, 40(sp)
+  j .trap_finish
+
+/**
  * TASK 1: Update trap handler and add routines for user and supervisor ecalls
  * so that they jump to 1 mode higher
  *
  * These routines update the value of register a0 to previous mode before trap
  * handler was invoked for ease in testing.
  */
-.umode_ecall_routine:
+umode_ecall_routine:
   /* Updating MPP to supervisor mode: 00 -> 01 */
   li t0, MSTATUS_MPP0
   csrs mstatus, t0
@@ -114,8 +209,7 @@ mcause_jumptable:
   sw a0, 40(sp)
   j .trap_finish
 
-  .p2align 2
-.smode_ecall_routine:
+smode_ecall_routine:
   /* Updating MPP to machine mode: 01 -> 11 */
   li t0, MSTATUS_MPP1
   csrs mstatus, t0
@@ -124,7 +218,7 @@ mcause_jumptable:
   sw a0, 40(sp)
   j .trap_finish
 
-.mmode_ecall_routine:
+mmode_ecall_routine:
   li a0, 0x3
   sw a0, 40(sp)
   j .trap_finish

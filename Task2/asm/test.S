@@ -6,42 +6,45 @@
   .type main, @function
 main:
   /**
-   * Using ecalls, we will determine which mode we are in
-   * Ecalls from machine mode have a0 == 2'b11
-   * Ecalls from supervisor mode have a0 == 2'b01
-   * Ecalls from user mode have a0 == 2'b00
+   * TBD
    */
-  la s0, begin_signature
-  ecall
-  sw a0, 0(s0)
 
-  /* Switching to S mode */
   li a0, 0
+  /* For initial tests without setting pmpxcfg L bits */
   call priv_change
 
-  /* Verifying we are in S mode */
-  ecall
-  sw a0, 4(s0)
+  /* Initially as PMP is configured, access to main function in S and U mode are
+   * disabled. As these sections are not explicitly defined, the below instruction
+   * raises the illegal instruction access exception */
+  add s0, zero, zero
 
-  /* After the ecall we are again in machine mode */
-  li a0, 1
-  call priv_change
 
-  /* Verifying we are in user mode */
-  ecall
-  sw a0, 8(s0)
+  /* Testing X/W/R on defined regions from desired regions */
+  /* ================== TOR ================== */
+  /* Instruction access */
+  la t0, _TOR_START
+  jalr t0
 
-  /**
-   * After ecall we are in supervisor mode
-   * performing another ecall to enter machine mode
-   */
-  ecall
+  /* Write Access */
+  la t0, _TOR_START
+  sw t0, 4(t0)
 
-  /* Verifying if we are in machine mode */
-  ecall
-  sw a0, 12(s0)
+  /* Read Access */
+  lw t0, 4(t0)
 
-  // Exiting test
+  /* ================= NAPOT ================= */
+  /* Instruction access */
+  la t0, _NAPOT_START
+  jalr t0
+
+  /* Write Access */
+  la t0, _NAPOT_START
+  sw t0, 4(t0)
+
+  /* Read Access */
+  lw t0, 4(t0)
+
+  /* Exiting test */
   j write_tohost
 
   .section .text
@@ -52,10 +55,6 @@ write_tohost:
   li gp, 1
   sw gp, tohost, t5
   j write_tohost
-
-  .data
-base:
-  .word 0xcafebeef
 
   /**
    * Changes privilege level to User or Supervisor
@@ -84,4 +83,16 @@ priv_change:
 .finish:
   mret
   .size priv_change, .-priv_change
+
+  /**
+   * Keeps track of byte to write in signature.txt
+   */
+  .section .data
+  .type signature_count, @object
+  .global signature_count
+  .p2align 2
+signature_count:
+  .word 0x00
+  .size signature_count, 4
+
 RVTEST_DATA_BEGIN

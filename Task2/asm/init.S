@@ -52,14 +52,6 @@ pmp_configure:
   sll t3, t3, 24
   or t0, t0, t3
 
-  /* For applying PMP on M-mode accesses */
-  /*
-  li t2, MSTATUS_MPRV
-  csrs mstatus, t2
-  li t1, PMP_LOCK_MASK
-  ori t0, t0, t1
-  */
-
   csrw pmpcfg0, t0
 
   /* Initializing pmpaddrX csrs */
@@ -177,16 +169,16 @@ mcause_jumptable:
 /**
  * TASK 2: Update trap handler and add routines for load/store/execute exceptions
  *
- * These routines update the value of register a0 to the value of mcause due to
- * exception.
+ * These routines update the signature file, writing their respective mcause
+ * values
  */
 exec_access_routine:
-  csrr a0, mcause
-  csrrw t0, mscratch, t0
-  // Overwriting the location where a0 is saved
-  sw a0, 40(t0)
+  li a0, 0x1
+  ADD_TO_SIGNATURE a0
+
   // As we are testing the execution functionality by jumping to the address,
   // mepc should hold value of ra - 4
+  csrrw t0, mscratch, t0
   lw ra, 4(t0)
   addi ra, ra, -4
   csrw mepc, ra
@@ -194,19 +186,13 @@ exec_access_routine:
   j .trap_finish
 
 load_access_routine:
-  // Overwriting the location where a0 is saved
-  csrr a0, mcause
-  csrrw t0, mscratch, t0
-  sw a0, 40(t0)
-  csrrw t0, mscratch, t0
+  li a0, 0x5
+  ADD_TO_SIGNATURE a0
   j .trap_finish
 
 store_access_routine:
-  // Overwriting the location where a0 is saved
-  csrr a0, mcause
-  csrrw t0, mscratch, t0
-  sw a0, 40(t0)
-  csrrw t0, mscratch, t0
+  li a0, 0x7
+  ADD_TO_SIGNATURE a0
   j .trap_finish
 
 /**
@@ -220,27 +206,19 @@ umode_ecall_routine:
   /* Updating MPP to supervisor mode: 00 -> 01 */
   li t0, MSTATUS_MPP0
   csrs mstatus, t0
-  // Overwriting the location where a0 is saved
-  li a0, 0x0
-  csrrw t0, mscratch, t0
-  sw a0, 40(t0)
-  csrrw t0, mscratch, t0
+  // li a0, 0x0
+  // ADD_TO_SIGNATURE a0
   j .trap_finish
 
 smode_ecall_routine:
   /* Updating MPP to machine mode: 01 -> 11 */
   li t0, MSTATUS_MPP1
   csrs mstatus, t0
-  // Overwriting the location where a0 is saved
-  li a0, 0x1
-  csrrw t0, mscratch, t0
-  sw a0, 40(t0)
-  csrrw t0, mscratch, t0
+  // li a0, 0x1
+  // ADD_TO_SIGNATURE a0
   j .trap_finish
 
 mmode_ecall_routine:
-  li a0, 0x3
-  csrrw t0, mscratch, t0
-  sw a0, 40(t0)
-  csrrw t0, mscratch, t0
+  // li a0, 0x3
+  // ADD_TO_SIGNATURE a0
   j .trap_finish

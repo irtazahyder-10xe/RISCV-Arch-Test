@@ -30,7 +30,7 @@
   .popsection
 
   .equ XLEN, 8
-  .equ SPACE, 8
+  .equ SPACE, 10
   .p2align 4
   .global begin_signature
     begin_signature:

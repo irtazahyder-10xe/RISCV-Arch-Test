@@ -4,13 +4,14 @@
 
 .equ PTEs, 1024
 .equ PAGE_TABLE_SIZE, PTEs * 4
-.equ PTSIZE, 12
+.equ PAGE_SIZE, 12
 
 .equ VPN1_mask, 0xFFC00000
 .equ VPN0_mask, 0x003FF000
 .equ XWR_zero_mask, ~0x0E
 
-.equ VA, 0xdead4000
+.equ DATA_VA, 0xdead4000
+.equ TEXT_VA, 0xcafe8000
 .altmacro
 
 .macro RVTEST_DATA_BEGIN

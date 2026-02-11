@@ -1,46 +1,43 @@
 .include "asm/macro.S"
 
   .section .text
-  .p2align PTSIZE
+  .p2align 2
   .global main
   .type main, @function
 main:
-  /* Setting up translation for main label in .text section */
-  la a0, main
-  la a1, l1_pt
+  /* Making entry for VA where supervisor instructions are stored */
+  li a0, TEXT_VA
+  la a1, l0_pt
   srli a1, a1, 2
   li a2, 0x0
   li a3, 1
   call PTE_entry
 
-  la a0, main
-  la a1, main
+  /* Making entry for VA where supervisor instructions are stored */
+  li a0, TEXT_VA
+  la a1, smode_exec_test
   srli a1, a1, 2
   li a2, 0x7
   li a3, 0
   call PTE_entry
 
-  /* Setting up PTE entry for .data section */
-  li a0, VA
-  la a1, l1_pt
-  // As argument a1 is [33:2] instead of [31:0]
-  srli a1, a1, 2
-  li a2, 0x0
-  li a3, 1
-  call PTE_entry
+  /* Saving the virtual address of smode_exec_test in mepc */
+  la s0, TEXT_VA
+  addi s0, s0, -4
+  csrw mepc, s0
 
-  li a0, VA
-  la a1, .data
-  srli a1, a1, 2
-  li a2, 0x7
-  li a3, 0
-  call PTE_entry
-
-  /* going to user mode */
+  /* going to user mode, after this we automatically jump to smode_exec_test */
   li a0, 1
   call priv_downgrade
+
+  .section .test_text, "x"
+  .global smode_exec_test
+  .p2align PAGE_SIZE
+  .type smode_exec_test, @function
+smode_exec_test:
   addi s0, s0, 5
   j write_tohost
+  .size smode_exec_test, .-smode_exec_test
 
   /**
    * @brief Add entry to PTE
@@ -66,50 +63,54 @@ PTE_entry:
   /* Initializing the PTE entry */
   /* s1 = PTE value */
   /* s0 = Page table address to save value */
-  /* Shifting by only 10 bits because last 2 bits of 34 bit PA ignored */
-  li t0, 0
+  /* PFN = PA >> 10 (as the register a1 already ignores the last 2 bits) */
   srli a1, a1, 10
 
 .set_pte:
-  li s1, 1
   slli a2, a2, 1
   /* Setting the valid and permission bits */
-  or s1, s1, a2
+  addi s1, a2, 1
 
-  /* Setting the PFN entry in PTE */
+  /* Setting the pte.PFN */
   slli a1, a1, 10
   or s1, s1, a1
 
 .save_pte:
-
   /* Computing Page Table index */
-  la s0, l0_pt
+  la s0, l1_pt
   /* Extracting first 10 bits from VA */
   li t0, VPN1_mask
   and t0, t0, a0
-  /* VPN[1] * 4, as memory word aligned, so left shift by 22 - 2 = 20 */
+
+  /* VPN[1] x 4, the mask ensures all other bits are zero */
   srli t0, t0, 20
 
   /* Adding the bits to the address */
   add s0, s0, t0
-  beqz a3, .l1_pte
+  beqz a3, .l0_pte
 
-.l0_pte:
+.l1_pte:
   /* This is a level 1 entry, so it is pointer to another page table */
   /* As pointer to page table, X/W/R = 000 */
   andi s1, s1, XWR_zero_mask
   j .pte_entry_finish
 
-.l1_pte:
-  /* As this is leaf pte, need to first find the L0 page */
-  /* Then add the VPN0 offset into the address to it */
+.l0_pte:
+  /* As this is leaf pte, need to first find the L1 PTE */
+  /* Extracting virtual page address from L1 page table */
   lw s0, 0(s0)
   andi s0, s0, ~0x3FF
   slli s0, s0, 2
+
+  /* Extracing VPN0 bits from VA */
   li t0, VPN0_mask
   and t0, t0, a0
-  /* VPN[0] * 4, as memory word aligned, so left shift by 12 - 2 = 10 */
-  srli t0, t0, 10
+  srli t0, t0, 12
+
+  /* VPN[0] * 4, as memory word aligned */
+  slli t0, t0, 2
+
+  /* Then add the VPN0 offset into the address to it */
   add s0, s0, t0
 
 .pte_entry_finish:
@@ -126,6 +127,8 @@ PTE_entry:
   /**
    * Changes privilege level to User or Supervisor
    * NOTE: This function should only be called from machine mode
+   * NOTE: It is the callee's responsibility to set mepc appropriately before
+   *       calling this function
    * @param[in]: a0 is 1, change priv_mode to supervisor
    *           : a0 is 0, change priv_mode to user
    */
@@ -134,19 +137,21 @@ PTE_entry:
   .global write_tohost
   .type priv_change, @function
 priv_downgrade:
-  /* Saving value of return address into mepc */
-  csrw mepc, ra
-  li t0, MSTATUS_MPP1
-  csrc mstatus, t0
-
-  /* If a0 is 0, then setting MPP to 01(SUPERVISOR) */
+  /* If a0 is 0, then setting MPP to 00(USER) */
   li t0, MSTATUS_MPP0
-  csrs mstatus, t0
-  bnez a0, .finish
-
-  /* otherwise setting MPP to 00(USER) */
   csrc mstatus, t0
+
+  li t1, MSTATUS_MPP1
+  csrc mstatus, t1
+  beqz a0, .finish
+
+  /* otherwise setting MPP to 01(SUPERIVISOR) */
+  csrs mstatus, t0
 .finish:
+  csrr ra, mepc
+  addi ra, ra, 4
+  csrw mepc, ra
+
   mret
   .size priv_downgrade, .-priv_downgrade
 
@@ -163,26 +168,26 @@ write_tohost:
   j write_tohost
 
   /**
-   * Defining the root/L0 page table
+   * Defining the root/l1 page table
    */
   .section .page_table
-  .p2align PTSIZE
-  .global l0_pt
-  .type l0_pt, @object
-l0_pt:
-  .fill PTEs, 4, 0x00000000
-  .size l0_pt, .-l0_pt
-
-  /**
-   * Defining the L1 page table
-   */
-  .section .page_table
-  .p2align PTSIZE
+  .p2align PAGE_SIZE
   .global l1_pt
   .type l1_pt, @object
 l1_pt:
   .fill PTEs, 4, 0x00000000
   .size l1_pt, .-l1_pt
+
+  /**
+   * Defining the leaf/l0 page table
+   */
+  .section .page_table
+  .p2align PAGE_SIZE
+  .global l0_pt
+  .type l0_pt, @object
+l0_pt:
+  .fill PTEs, 4, 0x00000000
+  .size l0_pt, .-l0_pt
 
   /**
    * Random data to be accessed to show virtual memory is working

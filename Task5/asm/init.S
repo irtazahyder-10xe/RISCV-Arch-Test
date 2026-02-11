@@ -26,9 +26,12 @@ _start:
   .p2align 2
   .type vm_configure, @function
 vm_configure:
-  li t0, 0x201
-  slli t0, t0, 22
-  la t1, l0_pt
+  /**
+   * Binary for enabling Sv32 and setting ASID = 1:
+   * 1_000|0000|01_00|0000|0000|0000|0000|0000
+   */
+  li t0, 0x80400000
+  la t1, l1_pt
   srli t1, t1, 12
   or t0, t0, t1
 

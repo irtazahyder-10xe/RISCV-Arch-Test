@@ -8,9 +8,9 @@
 
 .equ VPN1_mask, 0xFFC00000
 .equ VPN0_mask, 0x003FF000
-.equ XWR_zero_mask, 0x3F1
+.equ XWR_zero_mask, ~0x0E
 
-.equ VA_data, 0xdead0000
+.equ VA, 0xdead4000
 .altmacro
 
 .macro RVTEST_DATA_BEGIN

@@ -5,21 +5,39 @@
   .global main
   .type main, @function
 main:
-  /* Setting up PTE entry for .data section */
-  li a0, VA_data
-  la a1, .data
-  li a2, 0x3
+  /* Setting up translation for main label in .text section */
+  la a0, main
+  la a1, l1_pt
+  srli a1, a1, 2
+  li a2, 0x0
   li a3, 1
   call PTE_entry
 
-  li a0, VA_data
+  la a0, main
+  la a1, main
+  srli a1, a1, 2
+  li a2, 0x7
+  li a3, 0
+  call PTE_entry
+
+  /* Setting up PTE entry for .data section */
+  li a0, VA
+  la a1, l1_pt
+  // As argument a1 is [33:2] instead of [31:0]
+  srli a1, a1, 2
+  li a2, 0x0
+  li a3, 1
+  call PTE_entry
+
+  li a0, VA
   la a1, .data
-  li a2, 0x3
+  srli a1, a1, 2
+  li a2, 0x7
   li a3, 0
   call PTE_entry
 
   /* going to user mode */
-  li a0, 0
+  li a0, 1
   call priv_downgrade
   addi s0, s0, 5
   j write_tohost
@@ -41,13 +59,16 @@ main:
   .global PTE_entry
   .type PTE_entry, @function
 PTE_entry:
+  addi sp, sp, -16
+  sw ra, 12(sp)
+  sw s1, 8(sp)
+  sw s0, 4(sp)
   /* Initializing the PTE entry */
   /* s1 = PTE value */
   /* s0 = Page table address to save value */
   /* Shifting by only 10 bits because last 2 bits of 34 bit PA ignored */
   li t0, 0
-  slli a1, a1, 10
-  beqz a3, .set_pte
+  srli a1, a1, 10
 
 .set_pte:
   li s1, 1
@@ -60,13 +81,9 @@ PTE_entry:
   or s1, s1, a1
 
 .save_pte:
-  addi sp, sp, -16
-  sw ra, 12(sp)
-  sw s1, 8(sp)
-  sw s0, 4(sp)
 
   /* Computing Page Table index */
-  la s0, l1_pt
+  la s0, l0_pt
   /* Extracting first 10 bits from VA */
   li t0, VPN1_mask
   and t0, t0, a0
@@ -75,18 +92,20 @@ PTE_entry:
 
   /* Adding the bits to the address */
   add s0, s0, t0
-  beqz a3, .leaf_pte
+  beqz a3, .l1_pte
 
-.l1_pte:
+.l0_pte:
   /* This is a level 1 entry, so it is pointer to another page table */
   /* As pointer to page table, X/W/R = 000 */
   andi s1, s1, XWR_zero_mask
   j .pte_entry_finish
 
-.leaf_pte:
+.l1_pte:
   /* As this is leaf pte, need to first find the L0 page */
   /* Then add the VPN0 offset into the address to it */
   lw s0, 0(s0)
+  andi s0, s0, ~0x3FF
+  slli s0, s0, 2
   li t0, VPN0_mask
   and t0, t0, a0
   /* VPN[0] * 4, as memory word aligned, so left shift by 12 - 2 = 10 */
@@ -96,9 +115,9 @@ PTE_entry:
 .pte_entry_finish:
   sw s1, 0(s0)
 
-  sw s0, 4(sp)
-  sw s1, 8(sp)
-  sw ra, 12(sp)
+  lw s0, 4(sp)
+  lw s1, 8(sp)
+  lw ra, 12(sp)
   addi sp, sp, 16
 
   ret

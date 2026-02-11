@@ -20,7 +20,7 @@ _start:
    *  [ MODE | ASID | PFN ]
    *      1     9     22
    *  - MODE: 1 (SV32)
-   *  - ASID: 1
+   *  - ASID: 0
    *  - PFN : page_table address
    */
   .p2align 2
@@ -28,14 +28,16 @@ _start:
 vm_configure:
   /**
    * Binary for enabling Sv32 and setting ASID = 1:
-   * 1_000|0000|01_00|0000|0000|0000|0000|0000
+   * 1_000|0000|00_00|0000|0000|0000|0000|0000
    */
-  li t0, 0x80400000
+  li t0, (1 << 31)
   la t1, l1_pt
   srli t1, t1, 12
   or t0, t0, t1
 
   csrw satp, t0
+  sfence.vma
+
   ret
   .size vm_configure, .-vm_configure
 

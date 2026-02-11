@@ -6,10 +6,11 @@
   .type main, @function
 main:
   /* Making entry for VA where supervisor instructions are stored */
+  // Setting the outer page
   li a0, TEXT_VA
   la a1, l0_pt
   srli a1, a1, 2
-  li a2, 0x0
+  li a2, 0xc1
   li a3, 1
   call PTE_entry
 
@@ -17,12 +18,19 @@ main:
   li a0, TEXT_VA
   la a1, smode_exec_test
   srli a1, a1, 2
-  li a2, 0x7
+  li a2, 0xcf
   li a3, 0
   call PTE_entry
 
-  /* Saving the virtual address of smode_exec_test in mepc */
-  la s0, TEXT_VA
+  sfence.vma
+
+  // YOU DO NOT DO THIS SHIT IN M MODE, save physical address
+  // /* Saving the virtual address of smode_exec_test in mepc */
+  // la s0, TEXT_VA
+  // addi s0, s0, -4
+  // csrw mepc, s0
+
+  la s0, smode_exec_test
   addi s0, s0, -4
   csrw mepc, s0
 
@@ -43,12 +51,12 @@ smode_exec_test:
    * @brief Add entry to PTE
    *
    * PTE format:
-   * [ PPN[1] | PPN[2] | RSW (00) | D | A | G (0) | X | W | R | V ]
-   * [   12   |   10   |     2    | 1 | 1 |  1    | 1 | 1 | 1 | 1 ]
+   * [ PPN[1] | PPN[2] | RSW (00) | D | A | G (0) | U | X | W | R | V ]
+   * [   12   |   10   |     2    | 1 | 1 |  1    | 1 | 1 | 1 | 1 | 1 ]
    *
    * @params[in] a0: Virtual Address
    * @params[in] a1: Physical Address [33:2]
-   * @params[in] a2[2:0]: X/W/R permissions
+   * @params[in] a2[7:0]: D/A/G/U/X/W/R/V permissions
    * @params[in] a3[0]: level
    */
   .section .text
@@ -63,13 +71,13 @@ PTE_entry:
   /* Initializing the PTE entry */
   /* s1 = PTE value */
   /* s0 = Page table address to save value */
-  /* PFN = PA >> 10 (as the register a1 already ignores the last 2 bits) */
+  /* PFN = PA >> 12 (as the register a1 already ignores the last 2 bits,
+   * so shift by 10) */
   srli a1, a1, 10
 
 .set_pte:
-  slli a2, a2, 1
-  /* Setting the valid and permission bits */
-  addi s1, a2, 1
+  /* Setting the given permissions bits */
+  mv s1, a2
 
   /* Setting the pte.PFN */
   slli a1, a1, 10
@@ -92,14 +100,14 @@ PTE_entry:
 .l1_pte:
   /* This is a level 1 entry, so it is pointer to another page table */
   /* As pointer to page table, X/W/R = 000 */
-  andi s1, s1, XWR_zero_mask
   j .pte_entry_finish
 
 .l0_pte:
   /* As this is leaf pte, need to first find the L1 PTE */
   /* Extracting virtual page address from L1 page table */
   lw s0, 0(s0)
-  andi s0, s0, ~0x3FF
+  li t0, ~0x3FF
+  and s0, s0, t0
   slli s0, s0, 2
 
   /* Extracing VPN0 bits from VA */
@@ -152,6 +160,7 @@ priv_downgrade:
   addi ra, ra, 4
   csrw mepc, ra
 
+  sfence.vma
   mret
   .size priv_downgrade, .-priv_downgrade
 

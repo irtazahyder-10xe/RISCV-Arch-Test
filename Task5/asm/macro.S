@@ -2,13 +2,12 @@
 .equ MSTATUS_MPP1, 0x1000
 .equ MSTATUS_MPP0, 0x800
 
-.equ PTEs, 1024
-.equ PAGE_TABLE_SIZE, PTEs * 4
-.equ PAGE_SIZE, 12
+.equ PTE_COUNT_BITS, 10
+.equ PTB_BYTES, (1 << PTE_COUNT_BITS) * 4
+.equ PAGE_SIZE_BITS, 12
 
 .equ VPN1_mask, 0xFFC00000
 .equ VPN0_mask, 0x003FF000
-.equ XWR_zero_mask, ~0x0E
 
 .equ DATA_VA, 0xdead4000
 .equ TEXT_VA, 0xcafe8000

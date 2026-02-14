@@ -5,47 +5,103 @@
   .global main
   .type main, @function
 main:
-  /* Making entry for VA where supervisor instructions are stored */
-  // Setting the outer page
-  li a0, TEXT_VA
+  /* Assigning VA to tohost section */
+  /**
+   * tohost VA: 0xcafe6000
+   * VPN[1]: 'b1100_1010_11 = 0x32b
+   * VPN[0]: 'b11_1110_0110 = 0x3e6
+   */
+  // li s0, DATA_VA
+  // li t0, 0x1000
+  // add s0, s0, t0
+
+  li a0, 0x32b
   la a1, l0_pt
   srli a1, a1, 2
-  li a2, 0xc1
+  li a2, 0x0
   li a3, 1
   call PTE_entry
 
   /* Making entry for VA where supervisor instructions are stored */
-  li a0, TEXT_VA
-  la a1, smode_exec_test
+  la a0, 0x3e6
+  la a1, tohost
   srli a1, a1, 2
-  li a2, 0xcf
+  li a2, 0x7
+  li a3, 0
+  call PTE_entry
+
+  /* Making entry for VA where supervisor instructions are stored */
+  /**
+   * smode_test VA: 0xcafe8000
+   * VPN[1]: 'b1100_1010_11 = 0x32b
+   * VPN[0]: 'b11_1110_1000 = 0x3e8
+   */
+  la a0, 0x32b
+  la a1, l0_pt
+  srli a1, a1, 2
+  li a2, 0x0
+  li a3, 1
+  call PTE_entry
+
+  /* Making entry for VA where supervisor instructions are stored */
+  la a0, 0x3e8
+  la a1, smode_test
+  srli a1, a1, 2
+  li a2, 0x7
   li a3, 0
   call PTE_entry
 
   sfence.vma
 
   // YOU DO NOT DO THIS SHIT IN M MODE, save physical address
-  // /* Saving the virtual address of smode_exec_test in mepc */
+  // /* Saving the virtual address of smode_test in mepc */
   // la s0, TEXT_VA
   // addi s0, s0, -4
   // csrw mepc, s0
 
-  la s0, smode_exec_test
-  addi s0, s0, -4
-  csrw mepc, s0
+  /* going to supervisor mode */
+  li t0, MSTATUS_MPP1
+  csrc mstatus, t0
 
-  /* going to user mode, after this we automatically jump to smode_exec_test */
-  li a0, 1
-  call priv_downgrade
+  li t0, MSTATUS_MPP0
+  csrs mstatus, t0
+
+  /* Entering smode_test */
+  li s0, 0
+  lui s0, 0xcafe8
+  csrw mepc, s0
+  mret
 
   .section .test_text, "x"
-  .global smode_exec_test
-  .p2align PAGE_SIZE
-  .type smode_exec_test, @function
-smode_exec_test:
+  .global smode_test
+  .p2align PAGE_SIZE_BITS
+  .type smode_test, @function
+smode_test:
   addi s0, s0, 5
-  j write_tohost
-  .size smode_exec_test, .-smode_exec_test
+  j test_pass
+  .size smode_test, .-smode_test
+
+  /**
+   * Test passed
+   */
+  .p2align 2
+  .global test_pass
+  .type test_pass, @function
+test_pass:
+  li gp, 1
+  sw gp, tohost, t5
+  j test_pass
+
+  /**
+   * Test passed
+   */
+  .p2align 2
+  .global test_fail
+  .type test_fail, @function
+test_fail:
+  li gp, 3
+  sw gp, tohost, t5
+  j test_fail
 
   /**
    * @brief Add entry to PTE
@@ -54,9 +110,9 @@ smode_exec_test:
    * [ PPN[1] | PPN[2] | RSW (00) | D | A | G (0) | U | X | W | R | V ]
    * [   12   |   10   |     2    | 1 | 1 |  1    | 1 | 1 | 1 | 1 | 1 ]
    *
-   * @params[in] a0: Virtual Address
+   * @params[in] a0[31:21] or a[20:10]: VPN[1] or VPN[0]
    * @params[in] a1: Physical Address [33:2]
-   * @params[in] a2[7:0]: D/A/G/U/X/W/R/V permissions
+   * @params[in] a2[2:0]: X/W/R permissions
    * @params[in] a3[0]: level
    */
   .section .text
@@ -64,138 +120,55 @@ smode_exec_test:
   .global PTE_entry
   .type PTE_entry, @function
 PTE_entry:
-  addi sp, sp, -16
-  sw ra, 12(sp)
-  sw s1, 8(sp)
-  sw s0, 4(sp)
-  /* Initializing the PTE entry */
-  /* s1 = PTE value */
-  /* s0 = Page table address to save value */
-  /* PFN = PA >> 12 (as the register a1 already ignores the last 2 bits,
-   * so shift by 10) */
-  srli a1, a1, 10
+  /* Extracting PFN from PA */
+  mv t0, a1
+  li t1, 0xfffffc00
+  and t0, t0, t1
 
-.set_pte:
-  /* Setting the given permissions bits */
-  mv s1, a2
+  bnez a3, .l1_pte
+  .l0_pte:
+    /* Setting DA and V bits to 1 */
+    ori t0, t0, 0xc1
+    /* Setting the permission bits for X/W/R */
+    slli t1, a2, 1
+    or t0, t0, t1
+    /* Loading l0 page tables address */
+    la t1, l0_pt
+    j .pte_save
 
-  /* Setting the pte.PFN */
-  slli a1, a1, 10
-  or s1, s1, a1
+  .l1_pte:
+    /* Setting valid bit to 1 */
+    ori t0, t0, 0x1
+    /* Loading l1 page tables address */
+    la t1, l1_pt
 
-.save_pte:
-  /* Computing Page Table index */
-  la s0, l1_pt
-  /* Extracting first 10 bits from VA */
-  li t0, VPN1_mask
-  and t0, t0, a0
-
-  /* VPN[1] x 4, the mask ensures all other bits are zero */
-  srli t0, t0, 20
-
-  /* Adding the bits to the address */
-  add s0, s0, t0
-  beqz a3, .l0_pte
-
-.l1_pte:
-  /* This is a level 1 entry, so it is pointer to another page table */
-  /* As pointer to page table, X/W/R = 000 */
-  j .pte_entry_finish
-
-.l0_pte:
-  /* As this is leaf pte, need to first find the L1 PTE */
-  /* Extracting virtual page address from L1 page table */
-  lw s0, 0(s0)
-  li t0, ~0x3FF
-  and s0, s0, t0
-  slli s0, s0, 2
-
-  /* Extracing VPN0 bits from VA */
-  li t0, VPN0_mask
-  and t0, t0, a0
-  srli t0, t0, 12
-
-  /* VPN[0] * 4, as memory word aligned */
-  slli t0, t0, 2
-
-  /* Then add the VPN0 offset into the address to it */
-  add s0, s0, t0
-
-.pte_entry_finish:
-  sw s1, 0(s0)
-
-  lw s0, 4(sp)
-  lw s1, 8(sp)
-  lw ra, 12(sp)
-  addi sp, sp, 16
-
-  ret
+  .pte_save:
+    slli t2, a0, 2
+    add t1, t1, t2
+    sw t0, 0(t1)
+    ret
   .size PTE_entry, .-PTE_entry
-
-  /**
-   * Changes privilege level to User or Supervisor
-   * NOTE: This function should only be called from machine mode
-   * NOTE: It is the callee's responsibility to set mepc appropriately before
-   *       calling this function
-   * @param[in]: a0 is 1, change priv_mode to supervisor
-   *           : a0 is 0, change priv_mode to user
-   */
-  .section .text
-  .p2align 2
-  .global write_tohost
-  .type priv_change, @function
-priv_downgrade:
-  /* If a0 is 0, then setting MPP to 00(USER) */
-  li t0, MSTATUS_MPP0
-  csrc mstatus, t0
-
-  li t1, MSTATUS_MPP1
-  csrc mstatus, t1
-  beqz a0, .finish
-
-  /* otherwise setting MPP to 01(SUPERIVISOR) */
-  csrs mstatus, t0
-.finish:
-  csrr ra, mepc
-  addi ra, ra, 4
-  csrw mepc, ra
-
-  sfence.vma
-  mret
-  .size priv_downgrade, .-priv_downgrade
-
-  /**
-   * Write to host
-   */
-  .section .text
-  .p2align 2
-  .global write_tohost
-  .type write_tohost, @function
-write_tohost:
-  li gp, 1
-  sw gp, tohost, t5
-  j write_tohost
 
   /**
    * Defining the root/l1 page table
    */
   .section .page_table
-  .p2align PAGE_SIZE
+  .p2align PAGE_SIZE_BITS
   .global l1_pt
   .type l1_pt, @object
 l1_pt:
-  .fill PTEs, 4, 0x00000000
+  .zero PTB_BYTES
   .size l1_pt, .-l1_pt
 
   /**
    * Defining the leaf/l0 page table
    */
   .section .page_table
-  .p2align PAGE_SIZE
+  .p2align PAGE_SIZE_BITS
   .global l0_pt
   .type l0_pt, @object
 l0_pt:
-  .fill PTEs, 4, 0x00000000
+  .zero PTB_BYTES
   .size l0_pt, .-l0_pt
 
   /**

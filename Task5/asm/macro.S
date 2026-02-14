@@ -6,11 +6,6 @@
 .equ PTB_BYTES, (1 << PTE_COUNT_BITS) * 4
 .equ PAGE_SIZE_BITS, 12
 
-.equ VPN1_mask, 0xFFC00000
-.equ VPN0_mask, 0x003FF000
-
-.equ DATA_VA, 0xdead4000
-.equ TEXT_VA, 0xcafe8000
 .altmacro
 
 .macro RVTEST_DATA_BEGIN

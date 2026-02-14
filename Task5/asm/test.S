@@ -106,9 +106,6 @@ smode_test:
 
   /**
    * Page test where the page has all X/W/R privileges
-   *
-   * Pass condition:
-   *    - Singature_offest == 0
    */
 .smode_xwr_page:
 
@@ -117,24 +114,23 @@ smode_test:
 
   /* Write test */
   li t0, 0xcafebeef
-  sw t0, 8(s0)
+  sw t0, 4(s0)
 
   /* Read test */
-  lw t0, 8(s0)
+  lw t0, 4(s0)
   li t1, 0xcafebeef
   bne t1, t0, test_fail
 
-  /* Test failed if any above instructions wrote mcause in signature file */
+  /**
+   * Pass condition:
+   *    - Singature_offest == 0
+   */
   li s1, 0xcafe105c
   lw s1, 0(s1)
   bnez s1, test_fail
 
   /**
    * Page test where the page has all RW but no X privileges
-   *
-   * Pass condition:
-   *    - Singature_offest == 1
-   *    - begin_signature[0] byte == 12
    */
 .smode_wr_page:
   /* In s mode we need to give physical address explicitly */
@@ -160,7 +156,11 @@ smode_test:
   li t1, 0xcafebeef
   bne t1, t0, test_fail
 
-  /* Test passes if ONLY if the fetch instruction fails */
+  /**
+   * Pass condition:
+   *    - Singature_offest == 1
+   *    - begin_signature[0] byte == 12
+   */
   li s1, 0xcafe105c
   lw s1, 0(s1)
   li t0, 1
@@ -192,11 +192,12 @@ smode_test:
 
   /* Write test */
   li t0, 0xcafebeef
-  sw t0, 8(s0)
+  sw t0, 12(s0)
 
   /* Read test */
-  lw t0, 8(s0)
-  li t1, 0xcafebeef
+  lw t0, 12(s0)
+  li t1, 0xbeefcafe
+  bne t0, t1, test_fail
 
    /**
    * Pass condition:

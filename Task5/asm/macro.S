@@ -24,16 +24,23 @@
     .global fromhost
     fromhost: .dword 0
     .size fromhost, .-fromhost
-  .popsection
 
-  .equ XLEN, 8
-  .equ COUNT, 10
-  .p2align 4
-  .global begin_signature
-    begin_signature:
-      .fill COUNT, XLEN/8, 0xAB
-    end_signature:
+    .equ XLEN, 8
+    .equ COUNT, 10
+    .p2align 4
+    .global begin_signature
+  begin_signature:
+    .fill COUNT, XLEN/8, 0x00
+  end_signature:
   .size begin_signature, end_signature-begin_signature
+
+    .type signature_offset, @object
+    .global signature_offset
+    .p2align 2
+  signature_offset:
+    .word 0x00
+    .size signature_offset, 4
+  .popsection
 .endm
 
 .macro RVTEST_CODE_BEGIN
@@ -78,3 +85,4 @@
   la t0, signature_offset
   sw t1, 0(t0)
 .endm
+

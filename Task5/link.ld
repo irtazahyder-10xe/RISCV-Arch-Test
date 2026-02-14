@@ -12,7 +12,7 @@ SECTIONS
     *(.test_text)
   }
   .data ALIGN (0x1000) : {
-	  *(.data)
+	*(.data)
     *(.page_table)
     *(.test_data)
   }

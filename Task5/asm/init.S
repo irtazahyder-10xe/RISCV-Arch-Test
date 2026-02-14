@@ -142,6 +142,11 @@ mcause_jumptable:
 fetch_page_fault:
   li a0, 12
   ADD_TO_SIGNATURE a0
+  csrrw t0, mscratch, t0
+  lw ra, 4(t0)
+  addi ra, ra, -4
+  csrw mepc, ra
+  csrrw t0, mscratch, t0
   j .trap_finish
 
 load_page_fault:
